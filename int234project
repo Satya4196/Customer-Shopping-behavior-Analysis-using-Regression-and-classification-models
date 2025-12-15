@@ -1,0 +1,192 @@
+# ===============================
+# IMPORT REQUIRED LIBRARIES
+# ===============================
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.linear_model import LinearRegression
+from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
+from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+
+from sklearn.metrics import (
+    mean_squared_error, r2_score,
+    accuracy_score, confusion_matrix, classification_report
+)
+
+# ===============================
+# LOAD DATASET
+# ===============================
+df = pd.read_csv(r"C:\Users\karri\Downloads\shopping_behavior_updated.csv")
+
+print("First 5 rows:")
+print(df.head())
+
+print("\nDataset Info:")
+print(df.info())
+
+print("\nMissing Values:")
+print(df.isnull().sum())
+
+# ===============================
+# ENCODING CATEGORICAL VARIABLES
+# ===============================
+label_cols = [
+    'Gender', 'Item Purchased', 'Category', 'Location',
+    'Size', 'Color', 'Season', 'Subscription Status',
+    'Shipping Type', 'Discount Applied', 'Promo Code Used',
+    'Payment Method', 'Frequency of Purchases'
+]
+
+le = LabelEncoder()
+for col in label_cols:
+    df[col] = le.fit_transform(df[col])
+
+# ===============================
+# EDA
+# ===============================
+plt.figure(figsize=(6,5))
+sns.histplot(df['Purchase Amount (USD)'], bins=30, kde=True)
+plt.title("Purchase Amount Distribution")
+plt.show()
+
+plt.figure(figsize=(10,6))
+sns.heatmap(df.corr(), cmap='coolwarm')
+plt.title("Correlation Heatmap")
+plt.show()
+
+# ===============================
+# REGRESSION
+# Target: Purchase Amount (USD)
+# ===============================
+X = df.drop(['Customer ID', 'Purchase Amount (USD)'], axis=1)
+y = df['Purchase Amount (USD)']
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# ---- Linear Regression ----
+lr = LinearRegression()
+lr.fit(X_train, y_train)
+y_pred_lr = lr.predict(X_test)
+
+print("\nLINEAR REGRESSION")
+print("RMSE:", np.sqrt(mean_squared_error(y_test, y_pred_lr)))
+print("R²:", r2_score(y_test, y_pred_lr))
+
+plt.figure(figsize=(5,4))
+plt.scatter(y_test, y_pred_lr)
+plt.xlabel("Actual Purchase Amount")
+plt.ylabel("Predicted Purchase Amount")
+plt.title("Linear Regression: Actual vs Predicted")
+plt.show()
+
+# ---- KNN Regression ----
+knn_r = KNeighborsRegressor(n_neighbors=5)
+knn_r.fit(X_train, y_train)
+y_pred_knn_r = knn_r.predict(X_test)
+
+print("\nKNN REGRESSION")
+print("RMSE:", np.sqrt(mean_squared_error(y_test, y_pred_knn_r)))
+print("R²:", r2_score(y_test, y_pred_knn_r))
+
+plt.figure(figsize=(5,4))
+plt.scatter(y_test, y_pred_knn_r)
+plt.xlabel("Actual Purchase Amount")
+plt.ylabel("Predicted Purchase Amount")
+plt.title("KNN Regression: Actual vs Predicted")
+plt.show()
+
+# ---- Decision Tree Regression ----
+dt_r = DecisionTreeRegressor(random_state=42)
+dt_r.fit(X_train, y_train)
+y_pred_dt_r = dt_r.predict(X_test)
+
+print("\nDECISION TREE REGRESSION")
+print("RMSE:", np.sqrt(mean_squared_error(y_test, y_pred_dt_r)))
+print("R²:", r2_score(y_test, y_pred_dt_r))
+
+plt.figure(figsize=(5,4))
+plt.scatter(y_test, y_pred_dt_r)
+plt.xlabel("Actual Purchase Amount")
+plt.ylabel("Predicted Purchase Amount")
+plt.title("Decision Tree Regression: Actual vs Predicted")
+plt.show()
+
+# ===============================
+# CLASSIFICATION
+# High vs Low Purchase
+# ===============================
+df['Purchase_Class'] = (
+    df['Purchase Amount (USD)'] >= df['Purchase Amount (USD)'].median()
+).astype(int)
+
+X = df.drop(['Customer ID', 'Purchase Amount (USD)', 'Purchase_Class'], axis=1)
+y = df['Purchase_Class']
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# ---- KNN Classification ----
+knn = KNeighborsClassifier(n_neighbors=5)
+knn.fit(X_train, y_train)
+y_pred_knn = knn.predict(X_test)
+
+print("\nKNN CLASSIFICATION")
+print("Accuracy:", accuracy_score(y_test, y_pred_knn))
+print("Classification Report:\n", classification_report(y_test, y_pred_knn))
+
+plt.figure(figsize=(5,4))
+sns.heatmap(confusion_matrix(y_test, y_pred_knn),
+            annot=True, fmt='d', cmap='Blues')
+plt.title("KNN Classification - Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+
+# ---- Decision Tree Classification ----
+dt = DecisionTreeClassifier(random_state=42)
+dt.fit(X_train, y_train)
+y_pred_dt = dt.predict(X_test)
+
+print("\nDECISION TREE CLASSIFICATION")
+print("Accuracy:", accuracy_score(y_test, y_pred_dt))
+print("Classification Report:\n", classification_report(y_test, y_pred_dt))
+
+plt.figure(figsize=(5,4))
+sns.heatmap(confusion_matrix(y_test, y_pred_dt),
+            annot=True, fmt='d', cmap='Oranges')
+plt.title("Decision Tree Classification - Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
+
+# ---- GAUSSIAN NAIVE BAYES ----
+gnb = GaussianNB()
+gnb.fit(X_train, y_train)
+y_pred_gnb = gnb.predict(X_test)
+
+print("\nGAUSSIAN NAIVE BAYES")
+print("Accuracy:", accuracy_score(y_test, y_pred_gnb))
+print("Classification Report:\n", classification_report(y_test, y_pred_gnb))
+
+plt.figure(figsize=(5,4))
+sns.heatmap(confusion_matrix(y_test, y_pred_gnb),
+            annot=True, fmt='d', cmap='Greens')
+plt.title("Gaussian Naive Bayes - Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.show()
